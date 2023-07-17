@@ -213,7 +213,7 @@ RUN apt -y install mariadb-server
 # FLUSH PRIVILEGES;
 
 RUN echo "Replace VIPER.ENV"
-RUN git clone --depth 1 https://github.com/smaurice101/raspberrypi.git
+RUN git clone --depth 1 https://github.com/128478203-myseneca/raspaberrypi
 
 RUN chmod -R +x raspberrypi
 
