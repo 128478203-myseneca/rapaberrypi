@@ -71,10 +71,10 @@ if VIPERHOST=="":
 
 def setupkafkatopic(topicname):
           # Set personal data
-      companyname="OTICS"
-      myname="Sebastian"
-      myemail="Sebastian.Maurice"
-      mylocation="Toronto"
+      companyname="Seneca"
+      myname="Istvan"
+      myemail="istvan.feher"
+      mylocation="Canada"
 
       # Replication factor for Kafka redundancy
       replication=1
