@@ -196,11 +196,11 @@ latlong=lat:long'
      usemysql=1
 
 #     streamstojoin="Current,Voltage,Power"
-     streamstojoin="Current,Voltage,Power,EnergyUsed,EnergyUsed24hr"
+     streamstojoin="Current,Voltage,Power"
  
      identifier = "IoT device performance and failures"
 
-     preprocesslogic='avg,min,max,avg,outliers'
+     preprocesslogic='min,max,avg'
 
      
 #     pathtotmlattrs='oem=id,lat=subject.reference,long=component.0.code.coding.0.display,location=component.1.valueQuantity.value'     
