@@ -196,7 +196,7 @@ latlong=lat:long'
      usemysql=1
 
 #     streamstojoin="Current,Voltage,Power"
-     streamstojoin=""
+     streamstojoin="Current,Voltage,Power"
  
      identifier = "IoT device performance and failures"
 
