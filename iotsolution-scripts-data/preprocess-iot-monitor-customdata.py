@@ -29,6 +29,7 @@ VIPERHOST=''
 VIPERPORT=''
 HTTPADDR='https://'
 
+
 #############################################################################################################
 #                                      STORE VIPER TOKEN
 # Get the VIPERTOKEN from the file admin.tok - change folder location to admin.tok
@@ -65,7 +66,7 @@ def datasetup(maintopic,preprocesstopic):
      # Number of partitions for joined topic
      numpartitions=1
      # Enable SSL/TLS communication with Kafka
-     enabletls=1
+     enabletls=0
      # If brokerhost is empty then this function will use the brokerhost address in your
      # VIPER.ENV in the field 'KAFKA_CONNECT_BOOTSTRAP_SERVERS'
      brokerhost=''
@@ -97,7 +98,7 @@ def datasetup(maintopic,preprocesstopic):
          y = json.loads(result)
 
 
-     for p in y:  # Loop through the JSON and grab the topic and producerids
+     for p in y:  # Loop through the JSON ang grab the topic and producerids
          pid=p['ProducerId']
          tn=p['Topic']
 
@@ -112,6 +113,7 @@ def datasetup(maintopic,preprocesstopic):
 
 def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic):
 
+
  #############################################################################################################
       #                                    PREPROCESS DATA STREAMS
 
@@ -121,7 +123,7 @@ def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic
       # Go to the last offset of each stream: If lastoffset=500, then this function will rollback the 
       # streams to offset=500-50=450
      offset=-1
-      # Max wait time for Kafka to respond on milliseconds - you can increase this number if
+      # Max wait time for Kafka to response on milliseconds - you can increase this number if
       #maintopic to produce the preprocess data to
      topic=maintopic
       # producerid of the topic
@@ -133,40 +135,87 @@ def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic
       #if load balancing enter the microsericeid to route the HTTP to a specific machine
      microserviceid=''
 
-      # Create preprocess criteria for JSON data
-     jsoncriteria='uid=_id,filter:allrecords~\
-subtopics=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
-values=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
-datetime=crawled_at~\
-msgid=_id~\
-latlong='
+  
+      # You can preprocess with the following functions: MAX, MIN, SUM, AVG, COUNT, DIFF,OUTLIERS
+      # here we will take max values of the arcturus-humidity, we will Diff arcturus-temperature, and average arcturus-Light_Intensity
+      # NOTE: The number of process logic functions MUST match the streams - the operations will be applied in the same order
+#
+#     preprocesslogic='min,max,avg,diff,outliers,variance,anomprob,varied,outliers2-5,anomprob2-5,anomprob3,gm,hm,trend,IQR,trimean,spikedetect,cv,skewness,kurtosis'
+#     preprocesslogic='anomprob,outliers,consistency,variance,max,avg,diff,diffmargin,trend,min'
 
-     # Add a 7000 millisecond maximum delay for VIPER to wait for Kafka to return the confirmation message is received and written to the topic 
+     preprocessconditions=''
+     
+      # You can access these new preprocessed topics as:
+      #   arcturus-humidity_preprocessed_Max
+      #   arcturus-temperature_preprocessed_Diff
+      #   arcturus-Light_Intensity_preprocessed_Avg      
+    
+     # Add a 7000 millisecond maximum delay for VIPER to wait for Kafka to return confirmation message is received and written to topic 
      delay=70
      # USE TLS encryption when sending to Kafka Cloud (GCP/AWS/Azure)
      enabletls=1
      array=0
      saveasarray=1
      topicid=-999
+    
      rawdataoutput=1
      asynctimeout=120
      timedelay=0
-     tmlfilepath=''
-     usemysql=1
-     streamstojoin=""
-     identifier = "Product Data"
-     preprocesslogic=''
 
+     #jsoncriteria='uid=subject.reference,filter:resourceType=Observation~\
+#subtopics=code.coding.0.code,component.0.code.coding.0.code,component.1.code.coding.0.code~\
+#values=valueQuantity.value,component.0.valueQuantity.value,component.1.valueQuantity.value~\
+#identifiers=code.coding.0.display,component.0.code.coding.0.display,component.1.code.coding.0.display~\
+#datetime=effectiveDateTime~\
+#msgid=id~\
+#latlong='
+
+ # This is type Collections
+ 
+#	  // check for payload  'uid=subject.reference,filter:resourceType=MedicationAdministration,payload=payload.payload~\
+
+     jsoncriteria='uid=_id,filter:allrecords~\
+subtopics=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
+values=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
+datetime=crawled_at~\
+msgid=_id~\
+latlong='     
+
+#     jsoncriteria='uid=entry.0.resource.id,filter:allrecords~\
+#subtopics=entry.1.resource.type.0.coding.0.code~\
+#values=entry.1.resource.name~\
+#identifiers=entry.0.resource.id~\
+#datetime=timestamp~\
+#msgid=entry.2.resource.code.coding.0.display:entry.1.resource.name~\
+#latlong=entry.1.resource.position.latitude:entry.1.resource.position.longitude'     # use : to join multiple fields
+
+
+     tmlfilepath=''
+     
+     usemysql=1
+
+#     streamstojoin="Current,Voltage,Power"
+     streamstojoin=""
+ 
+     identifier = "IoT device performance and failures"
+
+     preprocesslogic='min,max,avg,variance,sum'
+
+     
+#     pathtotmlattrs='oem=id,lat=subject.reference,long=component.0.code.coding.0.display,location=component.1.valueQuantity.value'     
+     pathtotmlattrs='oem=n/a,lat=n/a,long=n/a,location=n/a,identifier=n/a'     
+     
      try:
         result=maadstml.viperpreprocesscustomjson(VIPERTOKEN,VIPERHOST,VIPERPORT,topic,producerid,offset,jsoncriteria,rawdataoutput,maxrows,enabletls,delay,brokerhost,
-                                          brokerport,microserviceid,topicid,streamstojoin,preprocesslogic,'',identifier,
-                                          preprocesstopic,array,saveasarray,timedelay,asynctimeout,usemysql,tmlfilepath,'')
+                                          brokerport,microserviceid,topicid,streamstojoin,preprocesslogic,preprocessconditions,identifier,
+                                          preprocesstopic,array,saveasarray,timedelay,asynctimeout,usemysql,tmlfilepath,pathtotmlattrs)
 #        time.sleep(.5)
         print(result)
         return result
      except Exception as e:
         print("ERROR:",e)
         return e
+     
 
 #############################################################################################################
 #                                     SETUP THE TOPIC DATA STREAMS FOR WALMART EXAMPLE
@@ -178,16 +227,18 @@ maintopic,producerid=datasetup(maintopic,preprocesstopic)
 print(maintopic,producerid)
 
 async def startviper():
-    print("Start Request:",datetime.datetime.now())
-    while True:
-        try:
+
+        print("Start Request:",datetime.datetime.now())
+        while True:
+          try:   
             sendtransactiondata(maintopic,producerid,VIPERPORT,-1,preprocesstopic)            
             time.sleep(1)
-        except Exception as e:
+          except Exception as e:
             print("ERROR:",e)
             continue
    
 async def spawnvipers():
+
     loop.run_until_complete(startviper())
   
 loop = asyncio.new_event_loop()
@@ -195,3 +246,4 @@ loop.create_task(spawnvipers())
 asyncio.set_event_loop(loop)
 
 loop.run_forever()
+
