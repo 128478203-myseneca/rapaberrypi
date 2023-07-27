@@ -1,5 +1,5 @@
 # Developed by: Sebastian Maurice, PhD
-# Date: 2023-05-18 
+# Date: 2021-01-18 
 # Toronto, Ontario Canada
 
 # TML python library
@@ -23,7 +23,8 @@ import datetime
 import time
 import os
 
-basedir = os.environ['userbasedir']
+basedir = os.environ['userbasedir'] 
+
 # Set Global Host/Port for VIPER - You may change this to fit your configuration
 VIPERHOST=''
 VIPERPORT=''
@@ -62,11 +63,11 @@ def datasetup(maintopic,preprocesstopic):
      mylocation="Canada"
 
      # Replication factor for Kafka redundancy
-     replication=1
+     replication=3
      # Number of partitions for joined topic
-     numpartitions=1
+     numpartitions=3
      # Enable SSL/TLS communication with Kafka
-     enabletls=0
+     enabletls=1
      # If brokerhost is empty then this function will use the brokerhost address in your
      # VIPER.ENV in the field 'KAFKA_CONNECT_BOOTSTRAP_SERVERS'
      brokerhost=''
@@ -119,7 +120,7 @@ def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic
 
       # Roll back each data stream by 10 percent - change this to a larger number if you want more data
       # For supervised machine learning you need a minimum of 30 data points in each stream
-     maxrows=2000
+     maxrows=3000
       # Go to the last offset of each stream: If lastoffset=500, then this function will rollback the 
       # streams to offset=500-50=450
      offset=-1
@@ -174,12 +175,13 @@ def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic
  
 #	  // check for payload  'uid=subject.reference,filter:resourceType=MedicationAdministration,payload=payload.payload~\
 
-     jsoncriteria='uid=_id,filter:allrecords~\
-subtopics=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
-values=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
-datetime=crawled_at~\
-msgid=_id~\
-latlong='     
+     jsoncriteria='uid=metadata.dsn,filter:allrecords~\
+subtopics=metadata.property_name~\
+values=datapoint.value~\
+identifiers=metadata.display_name~\
+datetime=datapoint.updated_at~\
+msgid=datapoint.id~\
+latlong=lat:long'     
 
 #     jsoncriteria='uid=entry.0.resource.id,filter:allrecords~\
 #subtopics=entry.1.resource.type.0.coding.0.code~\
@@ -199,7 +201,13 @@ latlong='
  
      identifier = "IoT device performance and failures"
 
-     preprocesslogic='min,max,avg,variance,sum'
+     # if dataage - use:dataage_utcoffset_timetype
+     preprocesslogic='variance,max,avg,diff,diffmargin'
+     #preprocesslogic='dataage_-4_day,trend,min,max' # millisecond,second,minute,hour,day
+     #preprocesslogic='dataage_-4_hour' # millisecond,second,minute,hour,day
+#     preprocesslogic='dataage_1_minute' # millisecond,second,minute,hour,day
+#     preprocesslogic='dataage_1_second' # millisecond,second,minute,hour,day
+#     preprocesslogic='dataage_1_millisecond' # millisecond,second,minute,hour,day
 
      
 #     pathtotmlattrs='oem=id,lat=subject.reference,long=component.0.code.coding.0.display,location=component.1.valueQuantity.value'     
