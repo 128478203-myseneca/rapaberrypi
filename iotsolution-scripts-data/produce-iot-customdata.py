@@ -1,33 +1,50 @@
 # Developed by: Sebastian Maurice, PhD
-# Date: 2023-05-18 
 # Toronto, Ontario Canada
+# OTICS Advanced Analytics
+
+#######################################################################################################################################
+#  This file will create the mapping for DSN id to TML id
+#########################################################################################################################################
 
 # TML python library
 import maadstml
 
 # Uncomment IF using Jupyter notebook 
-import nest_asyncio
+#import nest_asyncio
 
 import json
-import random
-from joblib import Parallel, delayed
-#from joblib import parallel_backend
-import sys
-import multiprocessing
+import numpy as np
 import pandas as pd
-#import concurrent.futures
-import asyncio
-# Uncomment IF using Jupyter notebook
-nest_asyncio.apply()
-import datetime
-import time
+from collections import OrderedDict
+import random
+import csv
+import gc
 import os
+from itertools import chain
+from random import randrange
+import math
+import imp
+import time
 
+
+# Set Global variables for VIPER and HPDE - You can change IP and Port for your setup of 
+# VIPER and HPDE
+#VIPERHOST="https://127.0.0.1"
+#VIPERPORT=8000
+
+#VIPERHOST="https://10.0.0.144"
+#VIPERPORT=62049
+
+# Set Global variable for Viper confifuration file - change the folder path for your computer
 basedir = os.environ['userbasedir']
+viperconfigfile=basedir + "/Viper-produce/viper.env"
+
+
 # Set Global Host/Port for VIPER - You may change this to fit your configuration
 VIPERHOST=''
 VIPERPORT=''
 HTTPADDR='https://'
+
 
 #############################################################################################################
 #                                      STORE VIPER TOKEN
@@ -35,11 +52,11 @@ HTTPADDR='https://'
 # to your location of admin.tok
 def getparams():
      global VIPERHOST, VIPERPORT, HTTPADDR
-     with open("/Viper-preprocess/admin.tok", "r") as f:
+     with open("/Viper-produce/admin.tok", "r") as f:
         VIPERTOKEN=f.read()
 
      if VIPERHOST=="":
-        with open('/Viper-preprocess/viper.txt', 'r') as f:
+        with open('/Viper-produce/viper.txt', 'r') as f:
           output = f.read()
           VIPERHOST = HTTPADDR + output.split(",")[0]
           VIPERPORT = output.split(",")[1]
@@ -50,148 +67,137 @@ VIPERTOKEN=getparams()
 if VIPERHOST=="":
     print("ERROR: Cannot read viper.txt: VIPERHOST is empty or HPDEHOST is empty")
 
-#############################################################################################################
-#                                     CREATE TOPICS IN KAFKA
 
-# Set personal data
-def datasetup(maintopic,preprocesstopic):
-     companyname="Seneca"
-     myname="Istvan"
-     myemail="istvan.feher"
-     mylocation="Canada"
+def setupkafkatopic(topicname):
+          # Set personal data
+      companyname="Seneca"
+      myname="Istvan"
+      myemail="istvan.feher"
+      mylocation="Canada
 
-     # Replication factor for Kafka redundancy
-     replication=1
-     # Number of partitions for joined topic
-     numpartitions=1
-     # Enable SSL/TLS communication with Kafka
-     enabletls=1
-     # If brokerhost is empty then this function will use the brokerhost address in your
-     # VIPER.ENV in the field 'KAFKA_CONNECT_BOOTSTRAP_SERVERS'
-     brokerhost=''
-     # If this is -999 then this function uses the port address for Kafka in VIPER.ENV in the
-     # field 'KAFKA_CONNECT_BOOTSTRAP_SERVERS'
-     brokerport=-999
-     # If you are using a reverse proxy to reach VIPER then you can put it here - otherwise if
-     # empty then no reverse proxy is being used
-     microserviceid=''
+      # Replication factor for Kafka redundancy
+      replication=1
+      # Number of partitions for joined topic
+      numpartitions=1
+      # Enable SSL/TLS communication with Kafka
+      enabletls=1
+      # If brokerhost is empty then this function will use the brokerhost address in your
+      # VIPER.ENV in the field 'KAFKA_CONNECT_BOOTSTRAP_SERVERS'
+      brokerhost=''
+      # If this is -999 then this function uses the port address for Kafka in VIPER.ENV in the
+      # field 'KAFKA_CONNECT_BOOTSTRAP_SERVERS'
+      brokerport=-999
+      # If you are using a reverse proxy to reach VIPER then you can put it here - otherwise if
+      # empty then no reverse proxy is being used
+      microserviceid=''
 
 
-     # Create a main topic that will hold data for several streams i.e. if you have 1000 IoT devices, and each device has 10 fields,
-     # rather than creating 10,000 streams you create ONE main stream to hold 10000 streams, this will drastically reduce Kafka partition
-     # costs
-
-
-     description="TML Use Case"
-
-     # Create the 4 topics in Kafka concurrently - it will return a JSON array
-     result=maadstml.vipercreatetopic(VIPERTOKEN,VIPERHOST,VIPERPORT,maintopic,companyname,
-                                    myname,myemail,mylocation,description,enabletls,
-                                    brokerhost,brokerport,numpartitions,replication,
-                                    microserviceid)
+      #############################################################################################################
+      #                         CREATE TOPIC TO STORE TRAINED PARAMS FROM ALGORITHM  
       
-     # Load the JSON array in variable y
-     try:
+      producetotopic=topicname
+
+      description="Topic to store the trained machine learning parameters"
+      result=maadstml.vipercreatetopic(VIPERTOKEN,VIPERHOST,VIPERPORT,producetotopic,companyname,
+                                     myname,myemail,mylocation,description,enabletls,
+                                     brokerhost,brokerport,numpartitions,replication,
+                                     microserviceid='')
+      # Load the JSON array in variable y
+      print("Result=",result)
+      try:
          y = json.loads(result,strict='False')
-     except Exception as e:
+      except Exception as e:
          y = json.loads(result)
 
 
-     for p in y:  # Loop through the JSON and grab the topic and producerids
+      for p in y:  # Loop through the JSON ang grab the topic and producerids
          pid=p['ProducerId']
          tn=p['Topic']
-
-     # Create the 4 topics in Kafka concurrently - it will return a JSON array
-     result=maadstml.vipercreatetopic(VIPERTOKEN,VIPERHOST,VIPERPORT,preprocesstopic,companyname,
-                                    myname,myemail,mylocation,description,enabletls,
-                                    brokerhost,brokerport,numpartitions,replication,
-                                    microserviceid)
          
-     return tn,pid
+      return tn,pid
 
 
-def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic):
+def csvlatlong(filename):
+ #dsntmlidmain.csv
+  csvfile = open(filename, 'r')
 
- #############################################################################################################
-      #                                    PREPROCESS DATA STREAMS
+  fieldnames = ("dsn","oem","identifier","index","lat","long")
+  lookup_dict = {}
 
-      # Roll back each data stream by 10 percent - change this to a larger number if you want more data
-      # For supervised machine learning you need a minimum of 30 data points in each stream
-     maxrows=2000
-      # Go to the last offset of each stream: If lastoffset=500, then this function will rollback the 
-      # streams to offset=500-50=450
-     offset=-1
-      # Max wait time for Kafka to respond on milliseconds - you can increase this number if
-      #maintopic to produce the preprocess data to
-     topic=maintopic
-      # producerid of the topic
-     producerid=mainproducerid
-      # use the host in Viper.env file
-     brokerhost=''
-      # use the port in Viper.env file
-     brokerport=-999
-      #if load balancing enter the microsericeid to route the HTTP to a specific machine
-     microserviceid=''
+  reader = csv.DictReader( csvfile, fieldnames)
+  for row in reader:
+        lookup_dict[(row['dsn'], row['lat'].lower(),
+                    row['long'].lower(),row['identifier'])] = row
 
-      # Create preprocess criteria for JSON data
-     jsoncriteria='uid=_id,filter:allrecords~\
-subtopics=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
-values=actual_price,average_rating,brand,category,crawled_at,description,discount,images,out_of_stock,pid,seller,selling_price,sub_category,title,url~\
-datetime=crawled_at~\
-msgid=_id~\
-latlong='
+  return lookup_dict
+  #i=0
+  #for row in reader:
+   # if i > 0:   
+#     json.dump(row, jsonfile)
+ #    jsonfile.write('\n')
+    #i = i +1 
+def getlatlong(reader,search,key):
+  i=0
+  locations = [i for i, t in enumerate(reader) if t[0]==search]
+  value_at_index = list(reader.values())[locations[0]]
+#  print(value_at_index['lat'],value_at_index['long'],value_at_index['identifier'])
+  
+  return value_at_index['lat'],value_at_index['long'],value_at_index['identifier']
 
-     # Add a 7000 millisecond maximum delay for VIPER to wait for Kafka to return the confirmation message is received and written to the topic 
-     delay=70
-     # USE TLS encryption when sending to Kafka Cloud (GCP/AWS/Azure)
-     enabletls=1
-     array=0
-     saveasarray=1
+
+def producetokafka(value, tmlid, identifier,producerid,maintopic,substream):
+     
+     
+     inputbuf=value     
      topicid=-999
-     rawdataoutput=1
-     asynctimeout=120
-     timedelay=0
-     tmlfilepath=''
-     usemysql=1
-     streamstojoin=""
-     identifier = "Product Data"
-     preprocesslogic=''
+
+    # print("value=",value)
+       
+     # Add a 7000 millisecond maximum delay for VIPER to wait for Kafka to return confirmation message is received and written to topic 
+     delay=7000
+     enabletls=1
 
      try:
-        result=maadstml.viperpreprocesscustomjson(VIPERTOKEN,VIPERHOST,VIPERPORT,topic,producerid,offset,jsoncriteria,rawdataoutput,maxrows,enabletls,delay,brokerhost,
-                                          brokerport,microserviceid,topicid,streamstojoin,preprocesslogic,'',identifier,
-                                          preprocesstopic,array,saveasarray,timedelay,asynctimeout,usemysql,tmlfilepath,'')
-#        time.sleep(.5)
+        result=maadstml.viperproducetotopic(VIPERTOKEN,VIPERHOST,VIPERPORT,maintopic,producerid,enabletls,delay,'','', '',0,inputbuf,substream,
+                                            topicid,identifier)
         print(result)
-        return result
      except Exception as e:
         print("ERROR:",e)
-        return e
 
-#############################################################################################################
-#                                     SETUP THE TOPIC DATA STREAMS FOR WALMART EXAMPLE
+      
+
+inputfile=basedir + '/IotSolution/IoTData.txt'
 
 maintopic='iot-mainstream'
-preprocesstopic='iot-preprocess'
 
-maintopic,producerid=datasetup(maintopic,preprocesstopic)
-print(maintopic,producerid)
+# Setup Kafka topic
+producerid=''
+try:
+  topic,producerid=setupkafkatopic(maintopic)
+except Exception as e:
+  pass
 
-async def startviper():
-    print("Start Request:",datetime.datetime.now())
-    while True:
-        try:
-            sendtransactiondata(maintopic,producerid,VIPERPORT,-1,preprocesstopic)            
-            time.sleep(1)
-        except Exception as e:
-            print("ERROR:",e)
-            continue
-   
-async def spawnvipers():
-    loop.run_until_complete(startviper())
+reader=csvlatlong(basedir + '/IotSolution/dsntmlidmain.csv')
+
+k=0
+file1 = open(inputfile, 'r')
+
+while True:
+  line = file1.readline()
+  line = line.replace(";", " ")
+  # add lat/long/identifier
+
+  #line = line[:-2]
+  jsonline = json.loads(line)
+  try:
+    lat,long,ident=getlatlong(reader,jsonline['metadata']['dsn'],'dsn')
+    line = line[:-2] + "," + '"lat":' + lat + ',"long":'+long + ',"identifier":"' + ident + '"}'
+    if not line:
+        #break
+       file1.seek(0)
+    producetokafka(line.strip(), "", "",producerid,maintopic,"")
+    time.sleep(0.2)
+  except Exception as e:
+     pass  
   
-loop = asyncio.new_event_loop()
-loop.create_task(spawnvipers())
-asyncio.set_event_loop(loop)
-
-loop.run_forever()
+file1.close()
