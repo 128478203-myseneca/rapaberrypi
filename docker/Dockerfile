@@ -206,11 +206,11 @@ RUN mkdir tmux
 RUN echo "Install Mariadb"
 RUN apt -y install mariadb-server
 
-sudo mysql_secure_installation
-RUN: sudo mysql -u root
-Execute: SET PASSWORD FOR 'root'@'localhost' = PASSWORD('raspberry'); 
-GRANT ALL PRIVILEGES on *.* to 'root'@'localhost' IDENTIFIED BY 'raspberry'; 
-FLUSH PRIVILEGES;
+#sudo mysql_secure_installation
+#RUN: sudo mysql -u root
+#Execute: SET PASSWORD FOR 'root'@'localhost' = PASSWORD('raspberry'); 
+#GRANT ALL PRIVILEGES on *.* to 'root'@'localhost' IDENTIFIED BY 'raspberry'; 
+#FLUSH PRIVILEGES;
 
 RUN echo "Replace VIPER.ENV"
 RUN git clone --depth 1 https://github.com/128478203-myseneca/raspberrypi
