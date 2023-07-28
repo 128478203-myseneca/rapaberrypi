@@ -60,7 +60,7 @@ def datasetup(maintopic,preprocesstopic):
      companyname="Seneca"
      myname="Istvan"
      myemail="istvan.feher"
-     mylocation="Canada"
+     mylocation="Canada
 
      # Replication factor for Kafka redundancy
      replication=3
@@ -144,7 +144,7 @@ def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic
 #     preprocesslogic='min,max,avg,diff,outliers,variance,anomprob,varied,outliers2-5,anomprob2-5,anomprob3,gm,hm,trend,IQR,trimean,spikedetect,cv,skewness,kurtosis'
 #     preprocesslogic='anomprob,outliers,consistency,variance,max,avg,diff,diffmargin,trend,min'
 
-     preprocessconditions=''
+     preprocessconditions='min,max,avg,diff,outliers'
      
       # You can access these new preprocessed topics as:
       #   arcturus-humidity_preprocessed_Max
@@ -175,11 +175,13 @@ def sendtransactiondata(maintopic,mainproducerid,VIPERPORT,index,preprocesstopic
  
 #	  // check for payload  'uid=subject.reference,filter:resourceType=MedicationAdministration,payload=payload.payload~\
 
-     jsoncriteria='uid=id~\
-subtopics=Datetime1,DAYTON_MW~\
-values=Datatime1,DAYTON_MW~\
-identifiers=id~\
-datetime=Datetime'
+     jsoncriteria='uid=metadata.dsn,filter:allrecords~\
+subtopics=metadata.property_name~\
+values=datapoint.value~\
+identifiers=metadata.display_name~\
+datetime=datapoint.updated_at~\
+msgid=datapoint.id~\
+latlong=lat:long'     
 
 #     jsoncriteria='uid=entry.0.resource.id,filter:allrecords~\
 #subtopics=entry.1.resource.type.0.coding.0.code~\
@@ -200,7 +202,7 @@ datetime=Datetime'
      identifier = "IoT device performance and failures"
 
      # if dataage - use:dataage_utcoffset_timetype
-     preprocesslogic=''
+     preprocesslogic='anomprob,trend,avg'
      #preprocesslogic='dataage_-4_day,trend,min,max' # millisecond,second,minute,hour,day
      #preprocesslogic='dataage_-4_hour' # millisecond,second,minute,hour,day
 #     preprocesslogic='dataage_1_minute' # millisecond,second,minute,hour,day
