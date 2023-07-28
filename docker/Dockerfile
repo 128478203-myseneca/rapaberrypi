@@ -231,7 +231,7 @@ RUN cp -rf raspberrypi/iotsolution-scripts-data/* IotSolution/
 ################# IOT DATA
 WORKDIR IotSolution
 
-RUN wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1Sicu6JOejfPQmiY0E0B78u_gEgWj23ZC' -O IoTData.zip
+RUN wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1yRgDYrWnHu74NYX9GMAVDjR10ZyfoZvh' -O IoTData.zip
 RUN chmod +x IoTData.zip
 RUN unzip IoTData.zip
 
